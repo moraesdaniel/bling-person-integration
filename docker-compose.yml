@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  bling-integrations:
+    container_name: bling-integrations
+    image: php8.2-cli-composer
+    ports:
+      - 8000:8000
+    volumes:
+      - ./:/var/www
+    command: sleep 7200
