@@ -4,6 +4,8 @@ namespace Domain\Person;
 
 use DomainException;
 use Domain\Phone;
+use Exception;
+use Illuminate\Support\Facades\Log;
 use LaravelLegends\PtBrValidator\Rules\Cpf;
 use LaravelLegends\PtBrValidator\Rules\Cnpj;
 
@@ -79,12 +81,19 @@ class Person
         $phonesArray = explode(',', $phones);
 
         foreach ($phonesArray as $phoneNumber) {
-            $phoneNumber = preg_replace('/[^0-9]/', '', $phones);
+            $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
             try {
-                array_push($this->phones, new Phone($phoneNumber));
-            } finally {
+                $phone = new Phone($phoneNumber);
+                array_push($this->phones, $phone);
+            } catch (Exception $e) {
+                Log::error("Falha ao criar telefone: " . $e->getMessage());
             }
         }
+    }
+
+    public function getName():string
+    {
+        return $this->name;
     }
 
     public function getPhones(): array

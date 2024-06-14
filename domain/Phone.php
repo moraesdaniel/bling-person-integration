@@ -14,19 +14,22 @@ class Phone
 
     public function __construct(string $phoneNumber)
     {
-        $phoneNumber = trim($phoneNumber, "0");
+        $phoneNumber = trim(ltrim($phoneNumber, " 0"));
 
         $phoneNumberLength = strlen($phoneNumber);
 
         if (!in_array($phoneNumberLength, [8, 9, 10, 11])) {
+            throw new DomainException("Quantidade de caracteres fora do padrão: $phoneNumberLength");
+        }
+
+        if ($phoneNumber[-8] == '1') {
             throw new DomainException("Número de telefone inválido: $phoneNumber");
         }
 
-        //2 a 5 fixo maior que 5 celular
-        if (in_array($phoneNumber[-8], ['8', '9'])) {
-            $this->phoneType = Self::CEL_PHONE;
-        } else {
+        if (in_array($phoneNumber[-8], ['2', '3', '4', '5'])) {
             $this->phoneType = Self::PHONE;
+        } else {
+            $this->phoneType = Self::CEL_PHONE;
         }
 
         if ($this->phoneType == Self::CEL_PHONE) {
@@ -40,7 +43,6 @@ class Phone
                 throw new DomainException("Número de telefone fixo inválido: $phoneNumber");
             }
 
-            echo "Achei um fixo: " . $phoneNumber . PHP_EOL;
         }
 
         $this->phoneNumber = $phoneNumber;
