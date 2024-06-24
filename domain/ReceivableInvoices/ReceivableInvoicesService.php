@@ -9,6 +9,7 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ReceivableInvoicesService
 {
@@ -29,60 +30,56 @@ class ReceivableInvoicesService
 
         $invoices = Http::get($blingBaseUrl . '/contasreceber/json', $params);
 
-        if ($invoices->successful()) {
+        if (($invoices->successful()) and (array_key_exists('contasreceber', $invoices['retorno']))) {
+            
             $invoices = $invoices->json();
 
             $paymentMethodsService = new PaymentMethodsService();
 
             $qtyTotal = 0;
             $qtyCreditCard = 0;
+            $qtyPaied = 0;
+            $httpClient = new Client();
             foreach ($invoices['retorno']['contasreceber'] as $invoice) {
                 $paymentMethodId = (int) $invoice['contaReceber']['idFormaPagamento'];
-                $invoiceValue = (float) $invoice['contaReceber']['valor'];
+                
                 if ($paymentMethodsService->isCreditCard($paymentMethodId)) {
-                    $taxValue = round($invoiceValue * $paymentMethodsService->getTaxById($paymentMethodId) / 100, 2);
-                    $invoiceId = $invoice['contaReceber']['id'];
-                    $dataLiquidacao = new DateTimeImmutable($invoice['contaReceber']['vencimento']);
-                    if (($invoiceId == '20350409458') or (  $invoiceId == '20350409471')) {
-                        echo "ID: $invoiceId" . PHP_EOL;
-                        echo 'Valor: ' . $invoice['contaReceber']['valor'] . PHP_EOL;
-                        echo 'Taxa de cartão: ' . $taxValue . PHP_EOL;
-                        echo 'Cliente: ' . $invoice['contaReceber']['cliente']['nome'] . PHP_EOL;
-                        echo 'Vencimento: ' . $dataLiquidacao->format('d/m/Y') . PHP_EOL;
-                        echo 'Forma de Pgto.: ' . $paymentMethodsService->getDescriptionById((int) $invoice['contaReceber']['idFormaPagamento']) . PHP_EOL;
-                        echo '############################################################' . PHP_EOL;
-                        $qtyCreditCard += 1;
 
+                    $invoiceId = $invoice['contaReceber']['id'];
+                    //if ($invoiceId == '20245674408') {
+                        $invoiceValue = (float) $invoice['contaReceber']['valor'];
+                        $taxValue = round($invoiceValue * $paymentMethodsService->getTaxById($paymentMethodId) / 100, 2);
+                        $dataLiquidacao = new DateTimeImmutable($invoice['contaReceber']['vencimento']);
+                        Log::info("Tentando baixar conta com ID: $invoiceId");
+                        echo "Tentando baixar conta com ID: $invoiceId" . PHP_EOL;
+    
+                        $qtyCreditCard += 1;
+    
                         $xml = '<?xml version="1.0" encoding="UTF-8"?>';
                         $xml .= '<contareceber>';
                         $xml .= '<dataLiquidacao>' . $dataLiquidacao->format('d/m/Y') . '</dataLiquidacao>';
                         $xml .= '<tarifa>' . number_format($taxValue, 2, '.') . '</tarifa>';
                         $xml .= '</contareceber>';
-
-                        echo $xml . PHP_EOL;
-
-                        $httpClient = new Client();
-
+    
                         try {
                             $response = $httpClient->put(
                                 $blingBaseUrl . "/contareceber/$invoiceId/json?apikey=$apiKey&xml=" . urlencode($xml)
                             );
-                            echo "Título baixado com sucesso" . PHP_EOL;
+                            Log::info("Título com ID $invoiceId, baixado com sucesso");
+                            echo "Título com ID $invoiceId, baixado com sucesso" . PHP_EOL;
+                            $qtyPaied++;
                         } catch (ClientException $e) {
+                            Log::error("ERROR: " . $e->getCode() . " Messsage: " . $e->getMessage());
                             echo "ERROR: " . $e->getCode() . " Messsage: " . $e->getMessage();
                         }
-                    }
+                    //}
                 }
                 $qtyTotal += 1;
-
             }
-
         } else {
-            throw new Exception('Falha ao buscar as contas a receber ' . $invoices->status());
+            throw new Exception('Não foram encontradas contas para baixar. StatusCode: ' . $invoices->status());
         }
 
-        echo "Quantidade Total: $qtyTotal / Cartão: $qtyCreditCard" . PHP_EOL;
-
-        //A conta da taxa é um round
+        echo "Quantidade Total: $qtyTotal / Cartão: $qtyCreditCard / Baixadas: $qtyPaied" . PHP_EOL;
     }
 }
