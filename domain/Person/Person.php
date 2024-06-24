@@ -2,6 +2,7 @@
 
 namespace Domain\Person;
 
+use DateTimeImmutable;
 use DomainException;
 use Domain\Phone;
 use Exception;
@@ -14,12 +15,14 @@ class Person
     private string $name;
     private string $document;
     private string $personNature;
-    private string $status;
+    private PersonStatus $status;
     private array $phones = [];
+    private DateTimeImmutable $birth_date;
+    private string $state;
 
     public function __construct(
-        string $name, 
-        string $document, 
+        string $name,
+        string $document,
         string $phones,
         string $personNature,
         string $status
@@ -32,7 +35,7 @@ class Person
         $this->setStatus($status);
     }
 
-    public function setStatus($status): void
+    public function setStatus(string $status): void
     {
         $this->status = $status;
     }
@@ -55,7 +58,7 @@ class Person
     {
         $cpfValidator = new Cpf();
         $cnpjValidator = new Cnpj();
-        
+
         if (strlen($document) == 0) throw new DomainException("Sem número do CNPJ/CPF.");
 
         if ($this->personNature = 'F') {
@@ -72,7 +75,7 @@ class Person
     public function setName(string $name): void
     {
         if (str_word_count($name) < 2) throw new DomainException("Nome do cliente incompleto: $name");
-        
+
         $this->name = ucwords(strtolower($name));
     }
 
