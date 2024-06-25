@@ -69,6 +69,10 @@ class PaymentMethodsService
             5796669 => [
                 'descricao' => 'Hipercard Crédito À Vista',
                 'tarifa' => 2.29
+            ],
+            5928952 => [
+                'descricao' => 'Coopercard Crédito À Vista',
+                'tarifa' => 6.00
             ]
         ];
     }
